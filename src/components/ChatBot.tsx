@@ -1,72 +1,56 @@
+
 import { useState } from 'react';
-import { MessageCircle, X, Send } from 'lucide-react';
-
-// Simple mock responses for the chatbot
-const CHATBOT_RESPONSES: Record<string, string[]> = {
-  default: [
-    "Hello! I'm your eco-tourism assistant. How can I help you today?",
-    "Feel free to ask me about sustainable travel tips or local eco-friendly practices.",
-  ],
-  greetings: [
-    "Hi! How can I assist you with sustainable tourism today?",
-    "Hello! Looking for eco-friendly travel advice?",
-    "Welcome! I can help you discover sustainable travel options.",
-  ],
-  sustainability: [
-    "Here are some eco-friendly travel tips:\n1. Use public transport\n2. Carry a reusable water bottle\n3. Support local businesses\n4. Minimize waste\n5. Respect local environments",
-    "Consider staying at hostels with high eco-scores - they actively implement sustainable practices!",
-    "Look for hostels that use renewable energy and practice water conservation.",
-  ],
-  activities: [
-    "Many of our hostels offer great eco-friendly activities like:\n- Beach cleanups\n- Local farming workshops\n- Renewable energy tours\n- Conservation projects",
-    "You can join community activities at most eco-hostels - it's a great way to learn about local sustainability practices!",
-  ],
-};
-
-function getResponse(message: string): string {
-  const lowercaseMsg = message.toLowerCase();
-  
-  if (lowercaseMsg.includes('hi') || lowercaseMsg.includes('hello') || lowercaseMsg.includes('hey')) {
-    return CHATBOT_RESPONSES.greetings[Math.floor(Math.random() * CHATBOT_RESPONSES.greetings.length)];
-  }
-  
-  if (lowercaseMsg.includes('sustainable') || lowercaseMsg.includes('eco') || lowercaseMsg.includes('green')) {
-    return CHATBOT_RESPONSES.sustainability[Math.floor(Math.random() * CHATBOT_RESPONSES.sustainability.length)];
-  }
-  
-  if (lowercaseMsg.includes('activity') || lowercaseMsg.includes('activities') || lowercaseMsg.includes('do')) {
-    return CHATBOT_RESPONSES.activities[Math.floor(Math.random() * CHATBOT_RESPONSES.activities.length)];
-  }
-  
-  return CHATBOT_RESPONSES.default[Math.floor(Math.random() * CHATBOT_RESPONSES.default.length)];
-}
+import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
 
 interface Message {
   id: number;
   text: string;
   isUser: boolean;
+  loading?: boolean;
 }
 
 export function ChatBot() {
+
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "Hi! I'm your eco-tourism assistant. How can I help you today?", isUser: false }
   ]);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
     const userMessage = { id: Date.now(), text: input, isUser: true };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+    setLoading(true);
 
-    // Simulate typing delay for bot response
-    setTimeout(() => {
-      const botMessage = { id: Date.now() + 1, text: getResponse(input), isUser: false };
-      setMessages(prev => [...prev, botMessage]);
-    }, 1000);
+    // Add a loading message
+    const loadingMsg: Message = { id: Date.now() + 1, text: 'Thinking...', isUser: false, loading: true };
+    setMessages(prev => [...prev, loadingMsg]);
+
+    try {
+      const res = await fetch('http://localhost:5174/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: input }),
+      });
+      const data = await res.json();
+      setMessages(prev => [
+        ...prev.filter(m => !m.loading),
+        { id: Date.now() + 2, text: data.text || 'Sorry, I could not get a response.', isUser: false }
+      ]);
+    } catch (err) {
+      setMessages(prev => [
+        ...prev.filter(m => !m.loading),
+        { id: Date.now() + 2, text: 'Sorry, there was an error contacting Gemini.', isUser: false }
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) {
@@ -104,9 +88,13 @@ export function ChatBot() {
                   message.isUser
                     ? 'bg-green-500 text-white'
                     : 'bg-gray-100 text-gray-800'
-                }`}
+                } flex items-center`}
               >
-                <p className="whitespace-pre-line">{message.text}</p>
+                {message.loading ? (
+                  <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin mr-1" /> Thinking...</span>
+                ) : (
+                  <p className="whitespace-pre-line">{message.text}</p>
+                )}
               </div>
             </div>
           ))}
@@ -121,12 +109,14 @@ export function ChatBot() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message..."
             className="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-green-500"
+            disabled={loading}
           />
           <button
             type="submit"
-            className="p-2 text-white bg-green-500 rounded-full hover:bg-green-600"
+            className="p-2 text-white bg-green-500 rounded-full hover:bg-green-600 disabled:opacity-50"
+            disabled={loading}
           >
-            <Send className="w-5 h-5" />
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </button>
         </div>
       </form>
