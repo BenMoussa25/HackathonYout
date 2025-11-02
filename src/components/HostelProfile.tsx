@@ -11,6 +11,7 @@ export function HostelProfile({ hostelId, onBack }: { hostelId: string; onBack?:
   const [activities, setActivities] = useState<ActivityRow[]>([]);
   const [commentsByActivity, setCommentsByActivity] = useState<Record<string, any[]>>({});
   const [photosByActivity, setPhotosByActivity] = useState<Record<string, any[]>>({});
+  const [videosByActivity, setVideosByActivity] = useState<Record<string, any[]>>({});
   const [ratingsByActivity, setRatingsByActivity] = useState<Record<string, { avg: number; count: number }>>({});
   const [loading, setLoading] = useState(true);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
@@ -42,7 +43,7 @@ export function HostelProfile({ hostelId, onBack }: { hostelId: string; onBack?:
 
       const ids = (activitiesData || []).map((a: any) => a.id);
 
-      if (ids.length > 0) {
+  if (ids.length > 0) {
         const { data: commentsData } = await supabase
           .from('event_comments')
           .select('*')
@@ -65,7 +66,20 @@ export function HostelProfile({ hostelId, onBack }: { hostelId: string; onBack?:
           photosMap[p.activity_id] = photosMap[p.activity_id] || [];
           photosMap[p.activity_id].push(p);
         });
+
         setPhotosByActivity(photosMap);
+
+        // Load videos
+        const { data: videosData } = await supabase
+          .from('event_videos')
+          .select('*')
+          .in('activity_id', ids);
+        const videosMap: Record<string, any[]> = {};
+        (videosData || []).forEach((v: any) => {
+          videosMap[v.activity_id] = videosMap[v.activity_id] || [];
+          videosMap[v.activity_id].push(v);
+        });
+        setVideosByActivity(videosMap);
 
         const { data: ratingsData } = await supabase
           .from('event_ratings')
@@ -88,7 +102,8 @@ export function HostelProfile({ hostelId, onBack }: { hostelId: string; onBack?:
         setRatingsByActivity(finalRatings);
       } else {
         setCommentsByActivity({});
-        setPhotosByActivity({});
+  setPhotosByActivity({});
+  setVideosByActivity({});
         setRatingsByActivity({});
       }
     } catch (err) {
@@ -116,29 +131,38 @@ export function HostelProfile({ hostelId, onBack }: { hostelId: string; onBack?:
     }
   };
 
-  const handleFileChange = async (activityId: string, file?: File) => {
+  const handleFileChange = async (activityId: string, file?: File, type: 'photo' | 'video' = 'photo') => {
     if (!file || !user) return;
     setUploading(true);
     const fileExt = file.name.split('.').pop();
     const filePath = `activity_${activityId}/${Date.now()}.${fileExt}`;
-    const bucket = 'event-photos';
+    const bucket = type === 'photo' ? 'event-photos' : 'event-videos';
     try {
       const { error: uploadErr } = await supabase.storage.from(bucket).upload(filePath, file, { upsert: false });
       if (uploadErr) throw uploadErr;
       const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(filePath);
       const publicUrl = publicData.publicUrl;
 
-      const { error: insertErr } = await supabase.from('event_photos').insert({
-        activity_id: activityId,
-        user_id: user.id,
-        url: publicUrl,
-      });
-      if (insertErr) throw insertErr;
+      if (type === 'photo') {
+        const { error: insertErr } = await supabase.from('event_photos').insert({
+          activity_id: activityId,
+          user_id: user.id,
+          url: publicUrl,
+        });
+        if (insertErr) throw insertErr;
+      } else {
+        const { error: insertErr } = await supabase.from('event_videos').insert({
+          activity_id: activityId,
+          user_id: user.id,
+          url: publicUrl,
+        });
+        if (insertErr) throw insertErr;
+      }
 
       await loadAll();
     } catch (err) {
-      console.error('Error uploading photo:', err);
-      alert('Failed to upload photo');
+      console.error('Error uploading file:', err);
+      alert('Failed to upload file');
     } finally {
       setUploading(false);
     }
@@ -216,8 +240,20 @@ export function HostelProfile({ hostelId, onBack }: { hostelId: string; onBack?:
                     ))}
                     <label className="inline-block px-3 py-2 mt-2 text-sm text-white bg-green-500 rounded cursor-pointer">
                       {uploading ? 'Uploading...' : 'Add Photo'}
-                      <input type="file" accept="image/*" onChange={(e) => handleFileChange(activity.id, e.target.files?.[0])} className="hidden" />
+                      <input type="file" accept="image/*" onChange={(e) => handleFileChange(activity.id, e.target.files?.[0], 'photo')} className="hidden" />
                     </label>
+                  </div>
+                  <div className="mt-4">
+                    <div className="text-sm font-medium text-gray-700">Videos</div>
+                    <div className="flex flex-wrap mt-2 gap-2">
+                      {(videosByActivity[activity.id] || []).map((v: any) => (
+                        <video key={v.id} src={v.url} controls className="object-cover w-32 h-24 rounded" />
+                      ))}
+                      <label className="inline-block px-3 py-2 mt-2 text-sm text-white bg-blue-500 rounded cursor-pointer">
+                        {uploading ? 'Uploading...' : 'Add Video'}
+                        <input type="file" accept="video/*" onChange={(e) => handleFileChange(activity.id, e.target.files?.[0], 'video')} className="hidden" />
+                      </label>
+                    </div>
                   </div>
                 </div>
 

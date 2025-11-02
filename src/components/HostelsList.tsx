@@ -28,6 +28,8 @@ interface Hostel {
   image_url: string | null;
 }
 
+// ...existing code...
+
 export function HostelsList({ onViewDetails }: { onViewDetails?: (id: string) => void }) {
   const { user } = useAuth();
   const [hostels, setHostels] = useState<Hostel[]>([]);
@@ -50,9 +52,10 @@ export function HostelsList({ onViewDetails }: { onViewDetails?: (id: string) =>
         .order('eco_score', { ascending: false });
 
       if (error) throw error;
-      setHostels(data || []);
+  setHostels(data || []);
     } catch (error) {
       console.error('Error loading hostels:', error);
+  setHostels([]);
     } finally {
       setLoading(false);
     }
