@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Leaf, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+import logo from '../assets/arab-youth-city-logo.png';
 import { useAuth } from '../contexts/AuthContext';
 
 interface NavigationProps {
@@ -19,15 +20,19 @@ export function Navigation({ onAuthClick, onNavigate }: NavigationProps) {
     }
   };
 
-  const navItems = [
-    { label: 'Home', id: 'home' },
-    { label: 'Hostels', id: 'hostels' },
-    { label: 'Traveler Wishes', id: 'wishes' },
-    { label: 'Forum', id: 'forum' },
+  let navItems = [
+    { label: '', id: 'home' }
   ];
-
-  if (profile?.role === 'hostel_manager') {
-    navItems.push({ label: 'Dashboard', id: 'dashboard' });
+  if (user) {
+    navItems = [
+      { label: 'Home', id: 'home' },
+      { label: 'Hostels', id: 'hostels' },
+      { label: 'Traveler Wishes', id: 'wishes' },
+      { label: 'Forum', id: 'forum' },
+    ];
+    if (profile?.role === 'hostel_manager') {
+      navItems.push({ label: 'Dashboard', id: 'dashboard' });
+    }
   }
 
   return (
@@ -36,8 +41,8 @@ export function Navigation({ onAuthClick, onNavigate }: NavigationProps) {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <div className="flex items-center flex-shrink-0">
-              <Leaf className="w-8 h-8 mr-2 text-green-500" />
-              <span className="text-xl font-bold text-green-600">Eco-Stay Connect</span>
+              <img src={logo} alt="Arab Youth City Logo" className="w-9 h-9 mr-2 rounded-full border border-green-200 bg-white" />
+              <span className="text-xl font-bold text-green-600">Arab Youth City</span>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               {navItems.map((item) => (

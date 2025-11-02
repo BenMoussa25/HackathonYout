@@ -12,7 +12,6 @@
   - Badge assignments
 */
 
--- Insert sample hostels (Note: manager_id will be null for sample data)
 INSERT INTO hostels (name, location, description, country, latitude, longitude, eco_score, travel_score, education_score, rating, image_url) VALUES
   (
     'Djerba Eco-Lodge',
@@ -26,6 +25,19 @@ INSERT INTO hostels (name, location, description, country, latitude, longitude, 
     7.8,
     4.5,
     'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80'
+  ),
+  (
+    'Youth hostel houmet souk djerba',
+    'Houmet Souk, Djerba, Tunisia',
+    'Youth hostel in Houmet Souk, Djerba, with community events and cultural exchange.',
+    'tunisia',
+    33.8751,
+    10.8572,
+    200,
+    7.5,
+    7.0,
+    4.2,
+    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80'
   ),
   (
     'Sidi Bou Said Green Hostel',
@@ -93,3 +105,34 @@ INSERT INTO hostels (name, location, description, country, latitude, longitude, 
     'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80'
   )
 ON CONFLICT DO NOTHING;
+
+-- Create a sample activity for the Djerba hostel and attach a photo and a video
+DO $$
+BEGIN
+  -- find hostel id
+  PERFORM 1 FROM hostels WHERE name = 'Youth hostel houmet souk djerba';
+  IF FOUND THEN
+    -- insert a sample activity if not exists
+    WITH h AS (
+      SELECT id FROM hostels WHERE name = 'Youth hostel houmet souk djerba' LIMIT 1
+    ), ins AS (
+      INSERT INTO hostel_activities (hostel_id, type, title, description, activity_date, points, coins, status)
+      SELECT h.id, 'community', 'Welcome Reel & Photo', 'Welcome reel and photos from our recent community event', now()::date, 50, 50, 'verified'
+      FROM h
+      WHERE NOT EXISTS (
+        SELECT 1 FROM hostel_activities a WHERE a.hostel_id = h.id AND a.title = 'Welcome Reel & Photo'
+      )
+      RETURNING id, hostel_id
+    )
+    -- insert media referencing files served statically from the app public folder
+    INSERT INTO event_photos (activity_id, user_id, url)
+    SELECT ins.id, NULL, '/assets/574284087_1543909377027508_7053514713650987271_n.jpg'
+    FROM ins
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO event_videos (activity_id, user_id, url)
+    SELECT ins.id, NULL, '/assets/575496845_24361599443518510_7780692301796087758_n.mp4'
+    FROM ins
+    ON CONFLICT DO NOTHING;
+  END IF;
+END$$;

@@ -36,12 +36,15 @@ export function HeroWithAuth({ onAuthClick }: HeroProps) {
               </div>
             )}
           </div>
-          <div className="mt-12 lg:mt-0">
-            <img
-              src="https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80"
-              alt="Sustainable hostel"
-              className="rounded-lg shadow-xl"
-            />
+          <div className="mt-8 lg:mt-0">
+            <div className="overflow-hidden rounded-lg shadow-xl">
+              <img
+                src="/assets/djerba-hero.jpg"
+                alt="Youth Hostel Houmet Souk, Djerba"
+                loading="lazy"
+                className="w-full h-64 sm:h-80 md:h-96 object-cover block"
+              />
+            </div>
           </div>
         </div>
       </div>
